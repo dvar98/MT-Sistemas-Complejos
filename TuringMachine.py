@@ -3,12 +3,13 @@ import importlib
 
 class TuringMachineBinaryOperator:
     def __init__(self):
-        self.tape = np.array([' '] * 50)
+        self.tape = np.array([' '] * 100)
         self.head_position = 0
         self.current_state = 'right'
         self.operator_index = -1  # Posición del símbolo de la operación
         self.operation_type = None
         self.transition_function = {}  # Se cargará según la operación
+        self.plus_index_original = -1  # Inicializar el índice original del '+'
 
     def load_input(self, expression):
         input_array = list(expression)
@@ -17,11 +18,12 @@ class TuringMachineBinaryOperator:
         self.head_position = start_pos
         self.current_state = 'right'
 
-        # Detecta el operador (puede ser '+', '-' o '*') y guarda su posición
+        # Detecta el operador (ahora incluye '/', además de '+', '-' y '*')
         for i, symbol in enumerate(input_array):
-            if symbol in ['+', '-', '*']:
+            if symbol in ['+', '-', '*', '/', '^', '%']:
                 self.operator_index = start_pos + i
                 self.operation_type = symbol
+                self.plus_index_original = self.operator_index  # Guardar el índice original del '+'
                 break
 
         # Carga el módulo de transiciones adecuado
@@ -31,6 +33,12 @@ class TuringMachineBinaryOperator:
             mod = importlib.import_module("resta_estados")
         elif self.operation_type == '*':
             mod = importlib.import_module("multiplicacion_estados")
+        elif self.operation_type == '/':
+            mod = importlib.import_module("division_estados")
+        elif self.operation_type == '^':
+            mod = importlib.import_module("potencia_estados")
+        elif self.operation_type == '%':
+            mod = importlib.import_module("modulo_estados")
         else:
             raise ValueError("Operación no reconocida")
         self.transition_function = mod.transition_function.copy()
@@ -91,22 +99,17 @@ class TuringMachineBinaryOperator:
         self.current_state = state
 
     def get_result(self):
-        # Se asume que el resultado está a la izquierda del separador.
-        # Se recorren todos los símbolos y se consideran como resultado solo los que
-        # sean '1' o X (los X se interpretan como '1').
-        result_array = []
-        for symbol in self.tape:
-            if symbol == '1' or symbol == 'X':
-                result_array.append('1')
-        return "".join(result_array)
+        if self.plus_index_original != -1:
+            result_array = self.tape[:self.plus_index_original]
+            result_str = "".join(result_array).replace(" ", "")
+            return result_str
+        return "Resultado no encontrado o error en la ejecución"
 
 
 # Ejemplo de uso:
 
 tm = TuringMachineBinaryOperator()
-# Puedes probar con distintas operaciones:
-#input_expression = "1+1"  # Para suma
-input_expression = "111-11"  # Para resta
+input_expression = "100%10" # Para resta
 
 tm.load_input(input_expression)
 tm.run()
